@@ -22,7 +22,7 @@ export default async function (req: any, res: Response) {
                 headers: {
                     "User-Agent": USER_AGENT_HEADER,
                     "Accept-Encoding": ACCEPT_ENCODING_HEADER,
-                    "Accept": HEADER,
+                    "Accept": ACCEPT_HEADER,
                     "Referer": "https://flixhq-tv.lol/",
                     "X-Requested-With": "XMLHttpRequest"
                 }
