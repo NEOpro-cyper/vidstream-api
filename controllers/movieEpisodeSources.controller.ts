@@ -51,37 +51,68 @@ export default async function (req: any, res: Response) {
                     }
                 );
 
-                // Find the server name by matching serverId
+                // Find the server name by matching serverId in the HTML response
                 if (serversResponse.data && serversResponse.data.html) {
-                    const serverMatch = serversResponse.data.html.match(
-                        new RegExp(`data-id="${serverId}"[^>]*>([^<]+)<`, 'i')
-                    );
-                    if (serverMatch) {
-                        serverName = serverMatch[1].trim();
+                    // Parse server names from HTML
+                    const serverMatches = serversResponse.data.html.match(/data-id="(\d+)"[^>]*>([^<]+)</g);
+                    if (serverMatches) {
+                        for (const match of serverMatches) {
+                            const idMatch = match.match(/data-id="(\d+)"/);
+                            const nameMatch = match.match(/>([^<]+)</);
+                            if (idMatch && nameMatch && idMatch[1] === serverId) {
+                                serverName = nameMatch[1].trim();
+                                break;
+                            }
+                        }
                     }
                 }
 
-                // Get episode information
-                const episodeInfoResponse = await axios.get(
-                    `https://flixhq-tv.lol/ajax/episode/info/${episodeId}`,
+                // Get episode information from your episodes endpoint
+                // We need to find which season this episode belongs to
+                // For now, we'll try a direct approach to get episode info
+                const episodeResponse = await axios.get(
+                    `${req.protocol}://${req.get('host')}/movie/${movieId}/episodes`,
                     {
                         headers: {
-                            "User-Agent": USER_AGENT_HEADER,
-                            "Accept-Encoding": ACCEPT_ENCODING_HEADER,
-                            "Accept": ACCEPT_HEADER,
-                            "Referer": "https://flixhq-tv.lol/",
-                            "X-Requested-With": "XMLHttpRequest"
+                            "User-Agent": USER_AGENT_HEADER
                         }
                     }
                 );
 
-                if (episodeInfoResponse.data) {
-                    episodeName = episodeInfoResponse.data.title || episodeName;
-                    episodeNumber = episodeInfoResponse.data.number || episodeInfoResponse.data.episode;
+                // Find the episode in all seasons
+                if (episodeResponse.data && episodeResponse.data.episodes) {
+                    const episode = episodeResponse.data.episodes.find((ep: any) => ep.id === episodeId);
+                    if (episode) {
+                        episodeName = episode.title;
+                        episodeNumber = episode.number;
+                    }
                 }
 
             } catch (serverError) {
                 console.log('Could not fetch server/episode info:', serverError.message);
+                
+                // Fallback: try to get episode info directly from FlixHQ
+                try {
+                    const episodeInfoResponse = await axios.get(
+                        `https://flixhq-tv.lol/ajax/episode/info/${episodeId}`,
+                        {
+                            headers: {
+                                "User-Agent": USER_AGENT_HEADER,
+                                "Accept-Encoding": ACCEPT_ENCODING_HEADER,
+                                "Accept": ACCEPT_HEADER,
+                                "Referer": "https://flixhq-tv.lol/",
+                                "X-Requested-With": "XMLHttpRequest"
+                            }
+                        }
+                    );
+
+                    if (episodeInfoResponse.data) {
+                        episodeName = episodeInfoResponse.data.title || episodeName;
+                        episodeNumber = episodeInfoResponse.data.number || episodeInfoResponse.data.episode;
+                    }
+                } catch (fallbackError) {
+                    console.log('Fallback episode info fetch failed:', fallbackError.message);
+                }
             }
         }
 
