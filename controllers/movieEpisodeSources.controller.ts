@@ -29,11 +29,12 @@ export default async function (req: any, res: Response) {
             }
         );
 
-        // Add _debug=true to the iframe link
+        // Add _debug=true to the iframe link (replace existing query params)
         const responseData = { ...flixhqResponse.data };
         if (responseData.link) {
-            const separator = responseData.link.includes('?') ? '&' : '?';
-            responseData.link = `${responseData.link}${separator}_debug=true`;
+            // Remove existing query parameters and add only _debug=true
+            const baseUrl = responseData.link.split('?')[0];
+            responseData.link = `${baseUrl}?_debug=true`;
         }
 
         // Return the modified response
