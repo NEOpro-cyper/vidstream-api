@@ -3,11 +3,10 @@ import { EpisodeServerResponse } from "../types/controllers/movieEpisodeSources"
 import { USER_AGENT_HEADER, ACCEPT_ENCODING_HEADER, ACCEPT_HEADER } from "../config/axois";
 import axios from "axios";
 
-// GET /movie/:id/sources?serverId=string&episodeId=string
+// GET /movie/:id/sources?serverId=string
 export default async function (req: any, res: Response) {
     try {
-        const { serverId, episodeId } = req.query;
-        const { id: movieId } = req.params;
+        const { serverId } = req.query;
         
         if (!serverId) {
             return res.status(400).json({ 
@@ -16,9 +15,9 @@ export default async function (req: any, res: Response) {
             });
         }
 
-        // Get the iframe link from FlixHQ
-        const sourcesResponse = await axios.get(
-            `https://flixhq-tv.lol/ajax/episode/sources/${serverId}`,
+        // Simply fetch from FlixHQ API and return the result with _debug=true
+        const flixhqResponse = await axios.get(
+            `https://flixhq-tv.lol/ajax/episode/sources/${serverId}?_debug=true`,
             {
                 headers: {
                     "User-Agent": USER_AGENT_HEADER,
@@ -30,106 +29,8 @@ export default async function (req: any, res: Response) {
             }
         );
 
-        let serverName = "Unknown Server";
-        let episodeName = "Unknown Episode";
-        let episodeNumber = null;
-
-        // Try to get server name and episode info if episodeId is provided
-        if (episodeId && movieId) {
-            try {
-                // Get available servers to find server name
-                const serversResponse = await axios.get(
-                    `https://flixhq-tv.lol/ajax/episode/servers/${episodeId}`,
-                    {
-                        headers: {
-                            "User-Agent": USER_AGENT_HEADER,
-                            "Accept-Encoding": ACCEPT_ENCODING_HEADER,
-                            "Accept": ACCEPT_HEADER,
-                            "Referer": "https://flixhq-tv.lol/",
-                            "X-Requested-With": "XMLHttpRequest"
-                        }
-                    }
-                );
-
-                // Find the server name by matching serverId in the HTML response
-                if (serversResponse.data && serversResponse.data.html) {
-                    // Parse server names from HTML
-                    const serverMatches = serversResponse.data.html.match(/data-id="(\d+)"[^>]*>([^<]+)</g);
-                    if (serverMatches) {
-                        for (const match of serverMatches) {
-                            const idMatch = match.match(/data-id="(\d+)"/);
-                            const nameMatch = match.match(/>([^<]+)</);
-                            if (idMatch && nameMatch && idMatch[1] === serverId) {
-                                serverName = nameMatch[1].trim();
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                // Get episode information from your episodes endpoint
-                // We need to find which season this episode belongs to
-                // For now, we'll try a direct approach to get episode info
-                const episodeResponse = await axios.get(
-                    `${req.protocol}://${req.get('host')}/movie/${movieId}/episodes`,
-                    {
-                        headers: {
-                            "User-Agent": USER_AGENT_HEADER
-                        }
-                    }
-                );
-
-                // Find the episode in all seasons
-                if (episodeResponse.data && episodeResponse.data.episodes) {
-                    const episode = episodeResponse.data.episodes.find((ep: any) => ep.id === episodeId);
-                    if (episode) {
-                        episodeName = episode.title;
-                        episodeNumber = episode.number;
-                    }
-                }
-
-            } catch (serverError) {
-                console.log('Could not fetch server/episode info:', serverError.message);
-                
-                // Fallback: try to get episode info directly from FlixHQ
-                try {
-                    const episodeInfoResponse = await axios.get(
-                        `https://flixhq-tv.lol/ajax/episode/info/${episodeId}`,
-                        {
-                            headers: {
-                                "User-Agent": USER_AGENT_HEADER,
-                                "Accept-Encoding": ACCEPT_ENCODING_HEADER,
-                                "Accept": ACCEPT_HEADER,
-                                "Referer": "https://flixhq-tv.lol/",
-                                "X-Requested-With": "XMLHttpRequest"
-                            }
-                        }
-                    );
-
-                    if (episodeInfoResponse.data) {
-                        episodeName = episodeInfoResponse.data.title || episodeName;
-                        episodeNumber = episodeInfoResponse.data.number || episodeInfoResponse.data.episode;
-                    }
-                } catch (fallbackError) {
-                    console.log('Fallback episode info fetch failed:', fallbackError.message);
-                }
-            }
-        }
-
-        // Return enhanced response with server and episode info
-        res.json({
-            ...sourcesResponse.data,
-            server: {
-                id: serverId,
-                name: serverName
-            },
-            episode: {
-                id: episodeId || null,
-                name: episodeName,
-                number: episodeNumber
-            },
-            movieId: movieId
-        });
+        // Return the FlixHQ response directly
+        res.json(flixhqResponse.data);
 
     } catch (error) {
         console.error('Error fetching sources:', error);
