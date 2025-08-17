@@ -42,9 +42,23 @@ export default async function (req: any, res: Response) {
 
     } catch (error) {
         console.error('Error fetching sources:', error);
+        console.error('Error details:', {
+            message: error.message,
+            status: error.response?.status,
+            statusText: error.response?.statusText,
+            data: error.response?.data,
+            url: `https://flixhq-tv.lol/ajax/episode/sources/${req.query.serverId}`
+        });
+        
         res.status(500).json({
             success: false,
-            error: 'Failed to fetch video sources'
+            error: 'Failed to fetch video sources',
+            debug: {
+                serverId: req.query.serverId,
+                url: `https://flixhq-tv.lol/ajax/episode/sources/${req.query.serverId}`,
+                errorMessage: error.message,
+                statusCode: error.response?.status
+            }
         });
     }
 }
