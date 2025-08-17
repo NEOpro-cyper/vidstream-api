@@ -710,7 +710,15 @@ const getMeta = async (url: string) => {
 
         await getMeta(embed_url);
 
-        let Q5 = await V(base_url + "/images/loading.png?v=0.0.9");
+        let Q5 = await wasmLoader(base_url + "/images/loading.png?v=0.0.9");
+fake_window.bytes = Q5;
+try {
+    wasmLoader.groot();
+} catch (error) {
+    console.log("error: ", error);
+}
+fake_window.jwt_plugin(Q5);
+let navigationResult = fake_window.navigate();
 
         let getSourcesUrl = "";
 
