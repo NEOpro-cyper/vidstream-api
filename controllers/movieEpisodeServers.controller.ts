@@ -13,9 +13,9 @@ export default async function (req: Request, res: Response) {
     
     const serverAjaxResponse = await axios.get(`${SRC_AJAX_URL}/movie/episode/servers/${req.query.episodeId}` as string, {
         headers: {
-            "Alt-Used": "flixhq.to",
-            "Host": "flixhq.to",
-            "Referer": `https://flixhq.to/series/${req.params.id}/${req.query.episodeId}`,
+            "Alt-Used": "vidstream.to",
+            "Host": "vidstream.to",
+            "Referer": `https://vidstream.to/series/${req.params.id}/${req.query.episodeId}`,
             "User-Agent": USER_AGENT_HEADER,
             "Accept-Encoding": ACCEPT_ENCODING_HEADER,
             Accept: ACCEPT_HEADER,
