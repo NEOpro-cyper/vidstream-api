@@ -1,6 +1,6 @@
 import axios, { AxiosError, type AxiosRequestConfig } from "axios";
 
-export const SRC_BASE_URL = "https://flixhq.to";
+export const SRC_BASE_URL = "https://vidstream.to";
 export const SRC_HOME_URL = `${SRC_BASE_URL}/home`;
 export const SRC_AJAX_URL = `${SRC_BASE_URL}/ajax`;
 
