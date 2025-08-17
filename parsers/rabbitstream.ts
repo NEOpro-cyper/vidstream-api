@@ -112,7 +112,7 @@ export default async function (main_arg_embed_url: string, main_arg_site: string
     let memoryBuff: Uint8Array | null;
 
     function getMemBuff(): Uint8Array {
-        return memoryBuff = null !== memoryBuff && 0 !== memoryBuff.byteLength ? memoryBuff : new Uint8Array(wasm.memory.buffer);
+        return memoryBuff = null !== memoryBuff && 0 !== memoryBuff.byteLength ? memoryBuff : new Uint8Array(ensureArrayBuffer(wasm.memory.buffer));
     }
 
     const encoder = new TextEncoder();
@@ -148,7 +148,7 @@ export default async function (main_arg_embed_url: string, main_arg_site: string
     }
 
     function getDataView() {
-        return dataView = dataView === null || isDetached(dataView.buffer) || dataView.buffer !== wasm.memory.buffer ? new DataView(wasm.memory.buffer) : dataView;
+        return dataView = dataView === null || isDetached(dataView.buffer) || dataView.buffer !== wasm.memory.buffer ? new DataView(ensureArrayBuffer(wasm.memory.buffer)) : dataView;
     }
 
     let pointer = arr.length;
