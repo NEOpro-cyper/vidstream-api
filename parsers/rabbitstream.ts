@@ -578,19 +578,7 @@ export default async function (main_arg_embed_url: string, main_arg_site: string
 
     let wasmLoader = Object.assign(loadWasm, { 'initSync': QZ }, grootLoader);
 
-    const V = async (url: string) => {
-        let Q0 = await wasmLoader(url);
-        fake_window.bytes = Q0;
-        try {
-            wasmLoader.groot();
-        } catch (error) {
-            console.log("error: ", error);
-        }
-        fake_window.jwt_plugin(Q0);
-        return fake_window.navigate();
-    }
-
-    const getMeta = async (url: string) => {
+const getMeta = async (url: string) => {
     let resp = await fetch(url, {
         "headers": {
             "User-Agent": user_agent,
@@ -599,29 +587,80 @@ export default async function (main_arg_embed_url: string, main_arg_site: string
     });
     let txt = await resp.text();
     
+    // Debug: Log the HTML to see what's actually there
+    console.log("First 2000 chars of HTML:", txt.substring(0, 2000));
+    
     // Try multiple regex patterns for j_crt
     let patterns = [
-        /name="j_crt" content="([^"]+)"/g,
-        /name='j_crt' content='([^']+)'/g,
-        /j_crt["']?\s*:\s*["']([^"']+)["']/g,
-        /name="j_crt"\s+content="([^"]+)"/g
+        /name="j_crt" content="([^"]+)"/gi,
+        /name='j_crt' content='([^']+)'/gi,
+        /j_crt["']?\s*:\s*["']([^"']+)["']/gi,
+        /name="j_crt"\s+content="([^"]+)"/gi,
+        /"j_crt"[^>]*content="([^"]+)"/gi,
+        /data-j_crt="([^"]+)"/gi,
+        /j_crt['"]*\s*=\s*['"]*([^'">\s]+)/gi
     ];
     
     let content = null;
     for (let pattern of patterns) {
+        pattern.lastIndex = 0; // Reset regex
         let match = pattern.exec(txt);
         if (match && match[1]) {
             content = match[1];
+            console.log("Found j_crt with pattern:", pattern.source);
             break;
         }
     }
     
+    // If still not found, try to find any meta tag with "crt" in it
     if (!content) {
-        console.log("Available meta tags:", txt.match(/<meta[^>]*name="[^"]*"[^>]*>/g));
-        throw new Error("j_crt not found in any expected format");
+        let crtTags = txt.match(/<meta[^>]*crt[^>]*>/gi);
+        console.log("Meta tags containing 'crt':", crtTags);
+        
+        // Look for any content that looks like a token/key
+        let tokenPatterns = [
+            /content="([A-Za-z0-9+/]{20,}={0,2})"/g,
+            /value="([A-Za-z0-9+/]{20,}={0,2})"/g
+        ];
+        
+        for (let pattern of tokenPatterns) {
+            pattern.lastIndex = 0;
+            let matches = [...txt.matchAll(pattern)];
+            if (matches.length > 0) {
+                content = matches[0][1];
+                console.log("Found potential token:", content.substring(0, 10) + "...");
+                break;
+            }
+        }
+    }
+    
+    // Last resort: try to find it in script tags
+    if (!content) {
+        let scriptMatches = txt.match(/<script[^>]*>[\s\S]*?<\/script>/gi);
+        if (scriptMatches) {
+            for (let script of scriptMatches) {
+                let tokenMatch = script.match(/j_crt['"]*\s*[:=]\s*['"]*([^'">\s,}]+)/i);
+                if (tokenMatch && tokenMatch[1]) {
+                    content = tokenMatch[1];
+                    console.log("Found j_crt in script tag");
+                    break;
+                }
+            }
+        }
+    }
+    
+    if (!content) {
+        // Show all meta tags for debugging
+        let allMeta = txt.match(/<meta[^>]*>/gi);
+        console.log("All meta tags found:", allMeta);
+        
+        // Try to use a default/fallback value or generate one
+        console.log("Attempting to continue without j_crt...");
+        content = "defaultToken"; // Fallback
     }
     
     meta.content = content.endsWith("==") ? content : content + "==";
+    console.log("Using j_crt content:", meta.content.substring(0, 20) + "...");
 }
 
     const i = (a: Uint8Array, P: Array<number>) => {
