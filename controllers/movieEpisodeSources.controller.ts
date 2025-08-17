@@ -15,22 +15,29 @@ export default async function (req: any, res: Response) {
             });
         }
 
-        // Simply fetch from FlixHQ API and return the result with _debug=true
+        // Simply fetch from FlixHQ API and return the result
         const flixhqResponse = await axios.get(
-            `https://flixhq-tv.lol/ajax/episode/sources/${serverId}?_debug=true`,
+            `https://flixhq-tv.lol/ajax/episode/sources/${serverId}`,
             {
                 headers: {
                     "User-Agent": USER_AGENT_HEADER,
                     "Accept-Encoding": ACCEPT_ENCODING_HEADER,
-                    "Accept": ACCEPT_HEADER,
+                    "Accept": HEADER,
                     "Referer": "https://flixhq-tv.lol/",
                     "X-Requested-With": "XMLHttpRequest"
                 }
             }
         );
 
-        // Return the FlixHQ response directly
-        res.json(flixhqResponse.data);
+        // Add _debug=true to the iframe link
+        const responseData = { ...flixhqResponse.data };
+        if (responseData.link) {
+            const separator = responseData.link.includes('?') ? '&' : '?';
+            responseData.link = `${responseData.link}${separator}_debug=true`;
+        }
+
+        // Return the modified response
+        res.json(responseData);
 
     } catch (error) {
         console.error('Error fetching sources:', error);
