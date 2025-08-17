@@ -407,7 +407,7 @@
             `;
         }
 
-        // Movie playback
+        // Movie playback with enhanced error handling
         async function playMovie(episodeId) {
             if (!episodeId) {
                 showToast('Episode ID not found', 'error');
@@ -422,18 +422,37 @@
                 const serversData = await serversResponse.json();
                 
                 if (serversData.servers && serversData.servers.length > 0) {
-                    // Use first server by default
-                    const serverId = serversData.servers[0].id;
+                    // Try servers in order until one works
+                    let successfulLoad = false;
                     
-                    // Get sources
-                    const sourcesResponse = await fetch(`${API_BASE}/movie/${currentMovie.id}/sources?serverId=${serverId}`);
-                    const sourcesData = await sourcesResponse.json();
+                    for (let i = 0; i < serversData.servers.length && !successfulLoad; i++) {
+                        const serverId = serversData.servers[i].id;
+                        
+                        try {
+                            // Get sources
+                            const sourcesResponse = await fetch(`${API_BASE}/movie/${currentMovie.id}/sources?serverId=${serverId}`);
+                            const sourcesData = await sourcesResponse.json();
+                            
+                            if (sourcesData.link && isValidVideoUrl(sourcesData.link)) {
+                                displayVideoPlayer(sourcesData.link, currentMovie.title, serversData.servers, episodeId);
+                                showPlayer();
+                                successfulLoad = true;
+                                
+                                // Store current playback info
+                                window.currentPlayback = {
+                                    movieId: currentMovie.id,
+                                    episodeId: episodeId,
+                                    serverId: serverId,
+                                    servers: serversData.servers
+                                };
+                            }
+                        } catch (error) {
+                            console.warn(`Server ${serversData.servers[i].name} failed:`, error);
+                        }
+                    }
                     
-                    if (sourcesData.link) {
-                        displayVideoPlayer(sourcesData.link, currentMovie.title, serversData.servers, episodeId);
-                        showPlayer();
-                    } else {
-                        showToast('No video source available', 'error');
+                    if (!successfulLoad) {
+                        showToast('All servers failed to load. Please try again later.', 'error');
                     }
                 } else {
                     showToast('No servers available', 'error');
@@ -443,6 +462,74 @@
                 showToast('Failed to load video', 'error');
             } finally {
                 showLoading(false);
+            }
+        }
+
+        // Enhanced episode playback
+        async function playEpisode(episodeId, episodeTitle, episodeNumber) {
+            currentEpisode = { id: episodeId, title: episodeTitle, number: episodeNumber };
+            showLoading(true);
+            
+            try {
+                // Get servers
+                const serversResponse = await fetch(`${API_BASE}/movie/${currentMovie.id}/servers?episodeId=${episodeId}`);
+                const serversData = await serversResponse.json();
+                
+                if (serversData.servers && serversData.servers.length > 0) {
+                    // Try servers in order until one works
+                    let successfulLoad = false;
+                    
+                    for (let i = 0; i < serversData.servers.length && !successfulLoad; i++) {
+                        const serverId = serversData.servers[i].id;
+                        
+                        try {
+                            // Get sources
+                            const sourcesResponse = await fetch(`${API_BASE}/movie/${currentMovie.id}/sources?serverId=${serverId}`);
+                            const sourcesData = await sourcesResponse.json();
+                            
+                            if (sourcesData.link && isValidVideoUrl(sourcesData.link)) {
+                                const title = `${currentMovie.title} - S${currentSeason.number}E${episodeNumber}: ${episodeTitle}`;
+                                displayVideoPlayer(sourcesData.link, title, serversData.servers, episodeId);
+                                showPlayer();
+                                successfulLoad = true;
+                                
+                                // Store current playback info
+                                window.currentPlayback = {
+                                    movieId: currentMovie.id,
+                                    episodeId: episodeId,
+                                    serverId: serverId,
+                                    servers: serversData.servers
+                                };
+                            }
+                        } catch (error) {
+                            console.warn(`Server ${serversData.servers[i].name} failed:`, error);
+                        }
+                    }
+                    
+                    if (!successfulLoad) {
+                        showToast('All servers failed to load. Please try again later.', 'error');
+                    }
+                } else {
+                    showToast('No servers available', 'error');
+                }
+            } catch (error) {
+                console.error('Play episode error:', error);
+                showToast('Failed to load video', 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Validate video URL
+        function isValidVideoUrl(url) {
+            if (!url || typeof url !== 'string') return false;
+            
+            try {
+                const urlObj = new URL(url);
+                // Check if it's a proper HTTP(S) URL
+                return urlObj.protocol === 'http:' || urlObj.protocol === 'https:';
+            } catch {
+                return false;
             }
         }
 
@@ -538,19 +625,38 @@
                 const serversData = await serversResponse.json();
                 
                 if (serversData.servers && serversData.servers.length > 0) {
-                    // Use first server by default
-                    const serverId = serversData.servers[0].id;
+                    // Try servers in order until one works
+                    let successfulLoad = false;
                     
-                    // Get sources
-                    const sourcesResponse = await fetch(`${API_BASE}/movie/${currentMovie.id}/sources?serverId=${serverId}`);
-                    const sourcesData = await sourcesResponse.json();
+                    for (let i = 0; i < serversData.servers.length && !successfulLoad; i++) {
+                        const serverId = serversData.servers[i].id;
+                        
+                        try {
+                            // Get sources
+                            const sourcesResponse = await fetch(`${API_BASE}/movie/${currentMovie.id}/sources?serverId=${serverId}`);
+                            const sourcesData = await sourcesResponse.json();
+                            
+                            if (sourcesData.link && isValidVideoUrl(sourcesData.link)) {
+                                const title = `${currentMovie.title} - S${currentSeason.number}E${episodeNumber}: ${episodeTitle}`;
+                                displayVideoPlayer(sourcesData.link, title, serversData.servers, episodeId);
+                                showPlayer();
+                                successfulLoad = true;
+                                
+                                // Store current playback info
+                                window.currentPlayback = {
+                                    movieId: currentMovie.id,
+                                    episodeId: episodeId,
+                                    serverId: serverId,
+                                    servers: serversData.servers
+                                };
+                            }
+                        } catch (error) {
+                            console.warn(`Server ${serversData.servers[i].name} failed:`, error);
+                        }
+                    }
                     
-                    if (sourcesData.link) {
-                        const title = `${currentMovie.title} - S${currentSeason.number}E${episodeNumber}: ${episodeTitle}`;
-                        displayVideoPlayer(sourcesData.link, title, serversData.servers, episodeId);
-                        showPlayer();
-                    } else {
-                        showToast('No video source available', 'error');
+                    if (!successfulLoad) {
+                        showToast('All servers failed to load. Please try again later.', 'error');
                     }
                 } else {
                     showToast('No servers available', 'error');
@@ -568,10 +674,38 @@
             const iframe = document.getElementById('video-iframe');
             const playerInfo = document.getElementById('player-info');
             
+            // Clear any previous content and add loading state
+            iframe.src = '';
+            
+            // Add iframe load event handlers
+            iframe.onload = function() {
+                console.log('Video iframe loaded successfully');
+                clearTimeout(window.iframeTimeout);
+            };
+            
+            iframe.onerror = function() {
+                console.error('Video iframe failed to load');
+                showToast('Failed to load video. Trying alternative...', 'error');
+                // Try next server if available
+                if (servers.length > 1) {
+                    changeServer(servers[1].id, episodeId, document.querySelectorAll('.server-btn')[1]);
+                }
+            };
+            
+            // Set timeout to detect loading issues
+            window.iframeTimeout = setTimeout(() => {
+                console.warn('Video iframe taking too long to load');
+                showToast('Video loading slowly. You can try a different server.', 'warning');
+            }, 10000);
+            
+            // Set the video source
             iframe.src = videoUrl;
             
             playerInfo.innerHTML = `
                 <h2>${title}</h2>
+                <div class="video-status" id="video-status">
+                    <p>🎬 Loading video player...</p>
+                </div>
                 <div class="server-selection">
                     <h4>Available Servers:</h4>
                     <div class="servers-list">
@@ -583,11 +717,28 @@
                         `).join('')}
                     </div>
                 </div>
+                <div class="player-controls">
+                    <button class="control-btn" onclick="refreshPlayer()">🔄 Refresh Player</button>
+                    <button class="control-btn" onclick="openInNewTab('${videoUrl}')">🔗 Open in New Tab</button>
+                </div>
             `;
+            
+            // Update video status after a short delay
+            setTimeout(() => {
+                const statusElement = document.getElementById('video-status');
+                if (statusElement) {
+                    statusElement.innerHTML = '<p>✅ Video player ready</p>';
+                }
+            }, 3000);
         }
 
         async function changeServer(serverId, episodeId, buttonElement) {
             showLoading(true);
+            
+            // Clear any existing timeout
+            if (window.iframeTimeout) {
+                clearTimeout(window.iframeTimeout);
+            }
             
             // Update active server button
             document.querySelectorAll('.server-btn').forEach(btn => btn.classList.remove('active'));
@@ -598,8 +749,38 @@
                 const data = await response.json();
                 
                 if (data.link) {
-                    document.getElementById('video-iframe').src = data.link;
-                    showToast('Server changed successfully', 'success');
+                    const iframe = document.getElementById('video-iframe');
+                    const statusElement = document.getElementById('video-status');
+                    
+                    // Clear iframe first
+                    iframe.src = '';
+                    
+                    // Update status
+                    if (statusElement) {
+                        statusElement.innerHTML = '<p>🎬 Switching server...</p>';
+                    }
+                    
+                    // Add a small delay before loading new source
+                    setTimeout(() => {
+                        iframe.src = data.link;
+                        
+                        // Set new timeout for this server
+                        window.iframeTimeout = setTimeout(() => {
+                            console.warn('New server taking too long to load');
+                            if (statusElement) {
+                                statusElement.innerHTML = '<p>⚠️ Server loading slowly. Try another server if needed.</p>';
+                            }
+                        }, 10000);
+                        
+                        // Update status after delay
+                        setTimeout(() => {
+                            if (statusElement) {
+                                statusElement.innerHTML = '<p>✅ Server changed successfully</p>';
+                            }
+                        }, 3000);
+                        
+                        showToast('Server changed successfully', 'success');
+                    }, 500);
                 } else {
                     showToast('Failed to load from this server', 'error');
                 }
@@ -609,6 +790,62 @@
             } finally {
                 showLoading(false);
             }
+        }
+
+        // Refresh player function
+        function refreshPlayer() {
+            const iframe = document.getElementById('video-iframe');
+            const currentSrc = iframe.src;
+            
+            if (currentSrc) {
+                iframe.src = '';
+                setTimeout(() => {
+                    iframe.src = currentSrc;
+                    showToast('Player refreshed', 'success');
+                }, 500);
+            }
+        }
+
+        // Open video in new tab
+        function openInNewTab(videoUrl) {
+            if (videoUrl) {
+                window.open(videoUrl, '_blank');
+                showToast('Video opened in new tab', 'success');
+            }
+        }
+
+        // Prevent back navigation when video is playing
+        function showPlayer() {
+            hideAllSections();
+            document.getElementById('player-section').classList.add('active');
+            
+            // Prevent accidental back navigation
+            window.addEventListener('beforeunload', handleBeforeUnload);
+        }
+
+        function handleBeforeUnload(e) {
+            const iframe = document.getElementById('video-iframe');
+            if (iframe.src) {
+                e.preventDefault();
+                e.returnValue = '';
+                return '';
+            }
+        }
+
+        function backToDetails() {
+            // Remove beforeunload listener
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+            
+            // Clear iframe
+            const iframe = document.getElementById('video-iframe');
+            iframe.src = '';
+            
+            // Clear any timeouts
+            if (window.iframeTimeout) {
+                clearTimeout(window.iframeTimeout);
+            }
+            
+            showDetails();
         }
 
         // Utility functions
