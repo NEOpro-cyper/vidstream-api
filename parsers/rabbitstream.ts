@@ -591,20 +591,38 @@ export default async function (main_arg_embed_url: string, main_arg_site: string
     }
 
     const getMeta = async (url: string) => {
-        let resp = await fetch(url, {
-            "headers": {
-                "UserAgent": user_agent,
-                "Referrer": referrer,
-            }
-        });
-        let txt = await resp.text();
-        let regx = /name="j_crt" content="[A-Za-z0-9]*/g
-        let match = txt.match(regx)?.[0];
-        if (!match)
-            throw new Error("j_crt not found");
-        let content = match.slice(match.lastIndexOf('"') + 1)
-        meta.content = content + "==";
+    let resp = await fetch(url, {
+        "headers": {
+            "User-Agent": user_agent,
+            "Referer": referrer,
+        }
+    });
+    let txt = await resp.text();
+    
+    // Try multiple regex patterns for j_crt
+    let patterns = [
+        /name="j_crt" content="([^"]+)"/g,
+        /name='j_crt' content='([^']+)'/g,
+        /j_crt["']?\s*:\s*["']([^"']+)["']/g,
+        /name="j_crt"\s+content="([^"]+)"/g
+    ];
+    
+    let content = null;
+    for (let pattern of patterns) {
+        let match = pattern.exec(txt);
+        if (match && match[1]) {
+            content = match[1];
+            break;
+        }
     }
+    
+    if (!content) {
+        console.log("Available meta tags:", txt.match(/<meta[^>]*name="[^"]*"[^>]*>/g));
+        throw new Error("j_crt not found in any expected format");
+    }
+    
+    meta.content = content.endsWith("==") ? content : content + "==";
+}
 
     const i = (a: Uint8Array, P: Array<number>) => {
         try {
