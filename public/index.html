@@ -3,893 +3,103 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CineStream - Your Movie Hub</title>
-    <meta name="description" content="Stream movies and TV shows online with CineStream">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="index.css">
+    <title>FlixHQ API Endpoints</title>
     <style>
-        /* Additional styles for enhanced functionality */
-        .video-player {
-            width: 100%;
-            height: 600px;
-            background: #000;
-            border-radius: 15px;
-            overflow: hidden;
-            margin-bottom: 2rem;
-        }
-
-        .video-player iframe {
-            width: 100%;
-            height: 100%;
-            border: none;
-        }
-
-        .episodes-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            gap: 1rem;
-            margin-top: 2rem;
-        }
-
-        .episode-card {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
-            padding: 1rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .episode-card:hover {
-            background: rgba(255, 255, 255, 0.1);
-            border-color: #667eea;
-            transform: translateY(-2px);
-        }
-
-        .seasons-nav {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 2rem;
-            flex-wrap: wrap;
-        }
-
-        .season-btn {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
             color: white;
-            padding: 0.5rem 1rem;
-            border-radius: 25px;
-            cursor: pointer;
-            transition: all 0.3s ease;
+            padding: 40px;
+            margin: 0;
         }
-
-        .season-btn.active,
-        .season-btn:hover {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            border-color: transparent;
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
         }
-
-        .server-selection {
-            margin-bottom: 2rem;
+        h1 {
+            color: #4ecdc4;
+            margin-bottom: 40px;
+            text-align: center;
         }
-
-        .servers-list {
-            display: flex;
-            gap: 1rem;
-            flex-wrap: wrap;
-        }
-
-        .server-btn {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: white;
-            padding: 0.5rem 1rem;
-            border-radius: 20px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .server-btn.active,
-        .server-btn:hover {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            border-color: transparent;
-        }
-
-        .toast {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: rgba(0, 0, 0, 0.9);
-            color: white;
-            padding: 1rem 2rem;
-            border-radius: 10px;
+        .endpoint {
+            background: #2a2a2a;
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 8px;
             border-left: 4px solid #667eea;
-            z-index: 1000;
-            animation: slideIn 0.3s ease;
         }
-
-        @keyframes slideIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
+        .endpoint-name {
+            font-size: 18px;
+            font-weight: bold;
+            color: #4ecdc4;
+            margin-bottom: 8px;
         }
-
-        .error-message {
-            text-align: center;
-            color: #ff6b6b;
-            padding: 2rem;
-            background: rgba(255, 107, 107, 0.1);
-            border: 1px solid rgba(255, 107, 107, 0.3);
-            border-radius: 10px;
-            margin: 2rem 0;
+        .endpoint-url {
+            font-family: monospace;
+            background: #333;
+            padding: 8px;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            word-break: break-all;
         }
-
-        .no-results {
-            text-align: center;
-            color: rgba(255, 255, 255, 0.6);
-            padding: 3rem;
-            font-size: 1.1rem;
+        .endpoint-example {
+            font-family: monospace;
+            color: #4ecdc4;
+            font-size: 14px;
         }
     </style>
 </head>
 <body>
-    <!-- Header -->
-    <header class="header">
-        <nav class="nav container">
-            <div class="logo" onclick="showHome()">CineStream</div>
-            <ul class="nav-links">
-                <li><a href="#" class="nav-link active" onclick="showHome()">Home</a></li>
-                <li><a href="#" class="nav-link" onclick="showSearch()">Search</a></li>
-            </ul>
-        </nav>
-    </header>
-
-    <!-- Main Content -->
-    <main class="main">
-        <!-- Home Section -->
-        <section id="home-section" class="section active">
-            <div class="hero">
-                <div class="container">
-                    <div class="hero-content">
-                        <h1 class="hero-title">Welcome to CineStream</h1>
-                        <p class="hero-subtitle">Discover and stream your favorite movies and TV shows</p>
-                        <div class="hero-search">
-                            <input type="text" class="search-input" placeholder="Search movies, TV shows..." id="hero-search-input">
-                            <button class="search-btn" onclick="searchFromHero()">
-                                🔍
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Search Section -->
-        <section id="search-section" class="section">
-            <div class="container">
-                <div class="search-header">
-                    <h2 class="section-title">Search Movies & TV Shows</h2>
-                    <div class="search-container">
-                        <input type="text" class="search-input" placeholder="Enter movie or TV show name..." id="search-input">
-                        <button class="search-btn" onclick="performSearch()">Search</button>
-                    </div>
-                </div>
-                
-                <div class="search-results">
-                    <div class="results-grid" id="results-grid"></div>
-                </div>
-                
-                <div class="loading" id="loading" style="display: none;">
-                    <div class="spinner"></div>
-                    <p>Loading...</p>
-                </div>
-            </div>
-        </section>
-
-        <!-- Movie Details Section -->
-        <section id="details-section" class="section">
-            <div class="container">
-                <button class="back-btn" onclick="backToSearch()">
-                    ← Back to Search
-                </button>
-                
-                <div class="movie-details" id="movie-details"></div>
-            </div>
-        </section>
-
-        <!-- Video Player Section -->
-        <section id="player-section" class="section">
-            <div class="container">
-                <button class="back-btn" onclick="backToDetails()">
-                    ← Back to Details
-                </button>
-                
-                <div class="player-container">
-                    <div class="video-player" id="video-player">
-                        <iframe id="video-iframe" allowfullscreen></iframe>
-                    </div>
-                    
-                    <div class="player-info" id="player-info"></div>
-                </div>
-            </div>
-        </section>
-    </main>
-
-    <!-- Toast Container -->
-    <div id="toast-container"></div>
-
-    <script>
-        // API Configuration
-        const API_BASE = 'https://vidstream-api-eb68.vercel.app';
+    <div class="container">
+        <h1>FlixHQ API Endpoints</h1>
         
-        // Global variables
-        let currentMovie = null;
-        let currentSeason = null;
-        let currentEpisode = null;
-        let searchResults = [];
+        <div class="endpoint">
+            <div class="endpoint-name">1. Home</div>
+            <div class="endpoint-url">/home</div>
+            <div class="endpoint-example">Example: /home</div>
+        </div>
 
-        // Navigation functions
-        function showHome() {
-            hideAllSections();
-            document.getElementById('home-section').classList.add('active');
-            updateNavLinks('home');
-        }
+        <div class="endpoint">
+            <div class="endpoint-name">2. Search</div>
+            <div class="endpoint-url">/search?q={searchQuery}&page={pageIndex}</div>
+            <div class="endpoint-example">Example: /search?q=avengers&page=1</div>
+        </div>
 
-        function showSearch() {
-            hideAllSections();
-            document.getElementById('search-section').classList.add('active');
-            updateNavLinks('search');
-        }
+        <div class="endpoint">
+            <div class="endpoint-name">3. Movie Details</div>
+            <div class="endpoint-url">/movie/{movieId}</div>
+            <div class="endpoint-example">Example: /movie/19782</div>
+        </div>
 
-        function showDetails() {
-            hideAllSections();
-            document.getElementById('details-section').classList.add('active');
-        }
+        <div class="endpoint">
+            <div class="endpoint-name">4. Seasons </div>
+            <div class="endpoint-url">/movie/{movieId}/seasons</div>
+            <div class="endpoint-example">Example: /movie/90553/seasons</div>
+        </div>
 
-        function showPlayer() {
-            hideAllSections();
-            document.getElementById('player-section').classList.add('active');
-        }
+        <div class="endpoint">
+            <div class="endpoint-name">5. Episodes</div>
+            <div class="endpoint-url">/movie/{movieId}/episodes?seasonId={seasonId}</div>
+            <div class="endpoint-example">Example: /movie/90553/seasons/episodes?seasonId=season-1</div>
+        </div>
 
-        function hideAllSections() {
-            document.querySelectorAll('.section').forEach(section => {
-                section.classList.remove('active');
-            });
-        }
+        <div class="endpoint">
+            <div class="endpoint-name">6. Servers</div>
+            <div class="endpoint-url">/movie/{movieId}/servers?episodeId={episodeId}</div>
+            <div class="endpoint-example">Example: /movie/90553/episodes?seasonId=72838</div>
+        </div>
 
-        function updateNavLinks(active) {
-            document.querySelectorAll('.nav-link').forEach(link => {
-                link.classList.remove('active');
-            });
-            if (active === 'home') {
-                document.querySelector('.nav-link[onclick="showHome()"]').classList.add('active');
-            } else if (active === 'search') {
-                document.querySelector('.nav-link[onclick="showSearch()"]').classList.add('active');
-            }
-        }
+         <div class="endpoint">
+            <div class="endpoint-name">6. Servers</div>
+            <div class="endpoint-url">/movie/{movieId}/servers?episodeId={episodeId}</div>
+            <div class="endpoint-example">Example: /movie/90553/servers?episodeId=1310353</div>
+        </div>
 
-        function backToSearch() {
-            showSearch();
-        }
-
-        function backToDetails() {
-            showDetails();
-        }
-
-        // Search functions
-        function searchFromHero() {
-            const query = document.getElementById('hero-search-input').value.trim();
-            if (query) {
-                document.getElementById('search-input').value = query;
-                showSearch();
-                performSearch();
-            }
-        }
-
-        async function performSearch() {
-            const query = document.getElementById('search-input').value.trim();
-            if (!query) {
-                showToast('Please enter a search query', 'error');
-                return;
-            }
-
-            showLoading(true);
-            
-            try {
-                const response = await fetch(`${API_BASE}/search?q=${encodeURIComponent(query)}`);
-                const data = await response.json();
-                
-                if (data.items && data.items.length > 0) {
-                    displaySearchResults(data.items);
-                    searchResults = data.items;
-                } else {
-                    displayNoResults();
-                }
-            } catch (error) {
-                console.error('Search error:', error);
-                displayError('Failed to search. Please try again.');
-            } finally {
-                showLoading(false);
-            }
-        }
-
-        function displaySearchResults(items) {
-            const grid = document.getElementById('results-grid');
-            grid.innerHTML = items.map(item => `
-                <div class="movie-card" onclick="selectMovie('${item.id}')">
-                    <img class="movie-poster" src="${item.poster}" alt="${item.title}" 
-                         onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDIwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMzAwIiBmaWxsPSIjMzMzIi8+Cjx0ZXh0IHg9IjEwMCIgeT0iMTUwIiBmaWxsPSIjNjY3IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiPk5vIEltYWdlPC90ZXh0Pgo8L3N2Zz4K'">
-                    <div class="movie-info">
-                        <h3 class="movie-title">${item.title}</h3>
-                        <div class="movie-stats">
-                            <span>${item.stats.year}</span>
-                            <span>${item.stats.duration}</span>
-                            <span class="rating">⭐ ${item.stats.rating}</span>
-                        </div>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        function displayNoResults() {
-            const grid = document.getElementById('results-grid');
-            grid.innerHTML = '<div class="no-results">No movies or TV shows found. Try a different search term.</div>';
-        }
-
-        function displayError(message) {
-            const grid = document.getElementById('results-grid');
-            grid.innerHTML = `<div class="error-message">${message}</div>`;
-        }
-
-        // Movie selection and details
-        async function selectMovie(movieId) {
-            showLoading(true);
-            
-            try {
-                const response = await fetch(`${API_BASE}/movie/${movieId}`);
-                const data = await response.json();
-                currentMovie = data;
-                
-                await displayMovieDetails(data);
-                showDetails();
-            } catch (error) {
-                console.error('Movie details error:', error);
-                showToast('Failed to load movie details', 'error');
-            } finally {
-                showLoading(false);
-            }
-        }
-
-        async function displayMovieDetails(movie) {
-            const detailsContainer = document.getElementById('movie-details');
-            
-            const genres = movie.stats.find(stat => stat.name === 'Genres:')?.value || [];
-            const cast = movie.stats.find(stat => stat.name === 'Cast:')?.value || [];
-            const duration = movie.stats.find(stat => stat.name === 'Duration:')?.value || 'N/A';
-            
-            detailsContainer.innerHTML = `
-                <div class="details-header">
-                    <div class="details-poster-container">
-                        <img class="details-poster" src="${movie.poster || ''}" alt="${movie.title}"
-                             onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjQwMCIgdmlld0JveD0iMCAwIDMwMCA0MDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIzMDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjMzMzIi8+Cjx0ZXh0IHg9IjE1MCIgeT0iMjAwIiBmaWxsPSIjNjY3IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTgiPk5vIEltYWdlPC90ZXh0Pgo8L3N2Zz4K'">
-                    </div>
-                    <div class="details-info">
-                        <h1>${movie.title}</h1>
-                        <p class="details-description">${movie.description}</p>
-                        <div class="details-stats">
-                            <div class="stat-item">
-                                <div class="stat-label">Type</div>
-                                <div>${movie.type === 'movie' ? 'Movie' : 'TV Series'}</div>
-                            </div>
-                            <div class="stat-item">
-                                <div class="stat-label">Duration</div>
-                                <div>${duration}</div>
-                            </div>
-                            <div class="stat-item">
-                                <div class="stat-label">Genres</div>
-                                <div>${genres.join(', ')}</div>
-                            </div>
-                            <div class="stat-item">
-                                <div class="stat-label">Cast</div>
-                                <div>${cast.slice(0, 3).join(', ')}${cast.length > 3 ? '...' : ''}</div>
-                            </div>
-                        </div>
-                        <div class="action-buttons">
-                            ${movie.type === 'movie' 
-                                ? `<button class="play-btn" onclick="playMovie('${movie.episodeId}')">▶ Play Movie</button>`
-                                : `<button class="play-btn" onclick="loadSeasons('${movie.id}')">📺 View Episodes</button>`
-                            }
-                        </div>
-                    </div>
-                </div>
-                <div id="seasons-episodes-container"></div>
-            `;
-        }
-
-        // Movie playback with enhanced error handling
-        async function playMovie(episodeId) {
-            if (!episodeId) {
-                showToast('Episode ID not found', 'error');
-                return;
-            }
-
-            showLoading(true);
-            
-            try {
-                // Get servers
-                const serversResponse = await fetch(`${API_BASE}/movie/${currentMovie.id}/servers?episodeId=${episodeId}`);
-                const serversData = await serversResponse.json();
-                
-                if (serversData.servers && serversData.servers.length > 0) {
-                    // Try servers in order until one works
-                    let successfulLoad = false;
-                    
-                    for (let i = 0; i < serversData.servers.length && !successfulLoad; i++) {
-                        const serverId = serversData.servers[i].id;
-                        
-                        try {
-                            // Get sources
-                            const sourcesResponse = await fetch(`${API_BASE}/movie/${currentMovie.id}/sources?serverId=${serverId}`);
-                            const sourcesData = await sourcesResponse.json();
-                            
-                            if (sourcesData.link && isValidVideoUrl(sourcesData.link)) {
-                                displayVideoPlayer(sourcesData.link, currentMovie.title, serversData.servers, episodeId);
-                                showPlayer();
-                                successfulLoad = true;
-                                
-                                // Store current playback info
-                                window.currentPlayback = {
-                                    movieId: currentMovie.id,
-                                    episodeId: episodeId,
-                                    serverId: serverId,
-                                    servers: serversData.servers
-                                };
-                            }
-                        } catch (error) {
-                            console.warn(`Server ${serversData.servers[i].name} failed:`, error);
-                        }
-                    }
-                    
-                    if (!successfulLoad) {
-                        showToast('All servers failed to load. Please try again later.', 'error');
-                    }
-                } else {
-                    showToast('No servers available', 'error');
-                }
-            } catch (error) {
-                console.error('Play movie error:', error);
-                showToast('Failed to load video', 'error');
-            } finally {
-                showLoading(false);
-            }
-        }
-
-        // Enhanced episode playback
-        async function playEpisode(episodeId, episodeTitle, episodeNumber) {
-            currentEpisode = { id: episodeId, title: episodeTitle, number: episodeNumber };
-            showLoading(true);
-            
-            try {
-                // Get servers
-                const serversResponse = await fetch(`${API_BASE}/movie/${currentMovie.id}/servers?episodeId=${episodeId}`);
-                const serversData = await serversResponse.json();
-                
-                if (serversData.servers && serversData.servers.length > 0) {
-                    // Try servers in order until one works
-                    let successfulLoad = false;
-                    
-                    for (let i = 0; i < serversData.servers.length && !successfulLoad; i++) {
-                        const serverId = serversData.servers[i].id;
-                        
-                        try {
-                            // Get sources
-                            const sourcesResponse = await fetch(`${API_BASE}/movie/${currentMovie.id}/sources?serverId=${serverId}`);
-                            const sourcesData = await sourcesResponse.json();
-                            
-                            if (sourcesData.link && isValidVideoUrl(sourcesData.link)) {
-                                const title = `${currentMovie.title} - S${currentSeason.number}E${episodeNumber}: ${episodeTitle}`;
-                                displayVideoPlayer(sourcesData.link, title, serversData.servers, episodeId);
-                                showPlayer();
-                                successfulLoad = true;
-                                
-                                // Store current playback info
-                                window.currentPlayback = {
-                                    movieId: currentMovie.id,
-                                    episodeId: episodeId,
-                                    serverId: serverId,
-                                    servers: serversData.servers
-                                };
-                            }
-                        } catch (error) {
-                            console.warn(`Server ${serversData.servers[i].name} failed:`, error);
-                        }
-                    }
-                    
-                    if (!successfulLoad) {
-                        showToast('All servers failed to load. Please try again later.', 'error');
-                    }
-                } else {
-                    showToast('No servers available', 'error');
-                }
-            } catch (error) {
-                console.error('Play episode error:', error);
-                showToast('Failed to load video', 'error');
-            } finally {
-                showLoading(false);
-            }
-        }
-
-        // Validate video URL
-        function isValidVideoUrl(url) {
-            if (!url || typeof url !== 'string') return false;
-            
-            try {
-                const urlObj = new URL(url);
-                // Check if it's a proper HTTP(S) URL
-                return urlObj.protocol === 'http:' || urlObj.protocol === 'https:';
-            } catch {
-                return false;
-            }
-        }
-
-        // TV Series functionality
-        async function loadSeasons(movieId) {
-            showLoading(true);
-            
-            try {
-                const response = await fetch(`${API_BASE}/movie/${movieId}/seasons`);
-                const data = await response.json();
-                
-                if (data.seasons && data.seasons.length > 0) {
-                    displaySeasons(data.seasons);
-                    // Load first season by default
-                    await loadEpisodes(movieId, data.seasons[0].id, data.seasons[0].number);
-                } else {
-                    showToast('No seasons available', 'error');
-                }
-            } catch (error) {
-                console.error('Load seasons error:', error);
-                showToast('Failed to load seasons', 'error');
-            } finally {
-                showLoading(false);
-            }
-        }
-
-        function displaySeasons(seasons) {
-            const container = document.getElementById('seasons-episodes-container');
-            container.innerHTML = `
-                <div class="episodes-section">
-                    <h3>Seasons</h3>
-                    <div class="seasons-nav">
-                        ${seasons.map(season => `
-                            <button class="season-btn ${season === seasons[0] ? 'active' : ''}" 
-                                    onclick="loadEpisodes('${currentMovie.id}', '${season.id}', ${season.number})">
-                                Season ${season.number}
-                            </button>
-                        `).join('')}
-                    </div>
-                    <div id="episodes-container"></div>
-                </div>
-            `;
-        }
-
-        async function loadEpisodes(movieId, seasonId, seasonNumber) {
-            showLoading(true);
-            currentSeason = { id: seasonId, number: seasonNumber };
-            
-            // Update active season button
-            document.querySelectorAll('.season-btn').forEach(btn => btn.classList.remove('active'));
-            event?.target?.classList.add('active');
-            
-            try {
-                const response = await fetch(`${API_BASE}/movie/${movieId}/episodes?seasonId=${seasonId}`);
-                const data = await response.json();
-                
-                if (data.episodes && data.episodes.length > 0) {
-                    displayEpisodes(data.episodes);
-                } else {
-                    document.getElementById('episodes-container').innerHTML = 
-                        '<div class="no-results">No episodes available</div>';
-                }
-            } catch (error) {
-                console.error('Load episodes error:', error);
-                showToast('Failed to load episodes', 'error');
-            } finally {
-                showLoading(false);
-            }
-        }
-
-        function displayEpisodes(episodes) {
-            const container = document.getElementById('episodes-container');
-            container.innerHTML = `
-                <h4>Episodes</h4>
-                <div class="episodes-grid">
-                    ${episodes.map(episode => `
-                        <div class="episode-card" onclick="playEpisode('${episode.id}', '${episode.title}', ${episode.number})">
-                            <h5>Episode ${episode.number}</h5>
-                            <p>${episode.title}</p>
-                        </div>
-                    `).join('')}
-                </div>
-            `;
-        }
-
-        async function playEpisode(episodeId, episodeTitle, episodeNumber) {
-            currentEpisode = { id: episodeId, title: episodeTitle, number: episodeNumber };
-            showLoading(true);
-            
-            try {
-                // Get servers
-                const serversResponse = await fetch(`${API_BASE}/movie/${currentMovie.id}/servers?episodeId=${episodeId}`);
-                const serversData = await serversResponse.json();
-                
-                if (serversData.servers && serversData.servers.length > 0) {
-                    // Try servers in order until one works
-                    let successfulLoad = false;
-                    
-                    for (let i = 0; i < serversData.servers.length && !successfulLoad; i++) {
-                        const serverId = serversData.servers[i].id;
-                        
-                        try {
-                            // Get sources
-                            const sourcesResponse = await fetch(`${API_BASE}/movie/${currentMovie.id}/sources?serverId=${serverId}`);
-                            const sourcesData = await sourcesResponse.json();
-                            
-                            if (sourcesData.link && isValidVideoUrl(sourcesData.link)) {
-                                const title = `${currentMovie.title} - S${currentSeason.number}E${episodeNumber}: ${episodeTitle}`;
-                                displayVideoPlayer(sourcesData.link, title, serversData.servers, episodeId);
-                                showPlayer();
-                                successfulLoad = true;
-                                
-                                // Store current playback info
-                                window.currentPlayback = {
-                                    movieId: currentMovie.id,
-                                    episodeId: episodeId,
-                                    serverId: serverId,
-                                    servers: serversData.servers
-                                };
-                            }
-                        } catch (error) {
-                            console.warn(`Server ${serversData.servers[i].name} failed:`, error);
-                        }
-                    }
-                    
-                    if (!successfulLoad) {
-                        showToast('All servers failed to load. Please try again later.', 'error');
-                    }
-                } else {
-                    showToast('No servers available', 'error');
-                }
-            } catch (error) {
-                console.error('Play episode error:', error);
-                showToast('Failed to load video', 'error');
-            } finally {
-                showLoading(false);
-            }
-        }
-
-        // Video player
-        function displayVideoPlayer(videoUrl, title, servers, episodeId) {
-            const iframe = document.getElementById('video-iframe');
-            const playerInfo = document.getElementById('player-info');
-            
-            // Clear any previous content and add loading state
-            iframe.src = '';
-            
-            // Add iframe load event handlers
-            iframe.onload = function() {
-                console.log('Video iframe loaded successfully');
-                clearTimeout(window.iframeTimeout);
-            };
-            
-            iframe.onerror = function() {
-                console.error('Video iframe failed to load');
-                showToast('Failed to load video. Trying alternative...', 'error');
-                // Try next server if available
-                if (servers.length > 1) {
-                    changeServer(servers[1].id, episodeId, document.querySelectorAll('.server-btn')[1]);
-                }
-            };
-            
-            // Set timeout to detect loading issues
-            window.iframeTimeout = setTimeout(() => {
-                console.warn('Video iframe taking too long to load');
-                showToast('Video loading slowly. You can try a different server.', 'warning');
-            }, 10000);
-            
-            // Set the video source
-            iframe.src = videoUrl;
-            
-            playerInfo.innerHTML = `
-                <h2>${title}</h2>
-                <div class="video-status" id="video-status">
-                    <p>🎬 Loading video player...</p>
-                </div>
-                <div class="server-selection">
-                    <h4>Available Servers:</h4>
-                    <div class="servers-list">
-                        ${servers.map((server, index) => `
-                            <button class="server-btn ${index === 0 ? 'active' : ''}" 
-                                    onclick="changeServer('${server.id}', '${episodeId}', this)">
-                                ${server.name}
-                            </button>
-                        `).join('')}
-                    </div>
-                </div>
-                <div class="player-controls">
-                    <button class="control-btn" onclick="refreshPlayer()">🔄 Refresh Player</button>
-                    <button class="control-btn" onclick="openInNewTab('${videoUrl}')">🔗 Open in New Tab</button>
-                </div>
-            `;
-            
-            // Update video status after a short delay
-            setTimeout(() => {
-                const statusElement = document.getElementById('video-status');
-                if (statusElement) {
-                    statusElement.innerHTML = '<p>✅ Video player ready</p>';
-                }
-            }, 3000);
-        }
-
-        async function changeServer(serverId, episodeId, buttonElement) {
-            showLoading(true);
-            
-            // Clear any existing timeout
-            if (window.iframeTimeout) {
-                clearTimeout(window.iframeTimeout);
-            }
-            
-            // Update active server button
-            document.querySelectorAll('.server-btn').forEach(btn => btn.classList.remove('active'));
-            buttonElement.classList.add('active');
-            
-            try {
-                const response = await fetch(`${API_BASE}/movie/${currentMovie.id}/sources?serverId=${serverId}`);
-                const data = await response.json();
-                
-                if (data.link) {
-                    const iframe = document.getElementById('video-iframe');
-                    const statusElement = document.getElementById('video-status');
-                    
-                    // Clear iframe first
-                    iframe.src = '';
-                    
-                    // Update status
-                    if (statusElement) {
-                        statusElement.innerHTML = '<p>🎬 Switching server...</p>';
-                    }
-                    
-                    // Add a small delay before loading new source
-                    setTimeout(() => {
-                        iframe.src = data.link;
-                        
-                        // Set new timeout for this server
-                        window.iframeTimeout = setTimeout(() => {
-                            console.warn('New server taking too long to load');
-                            if (statusElement) {
-                                statusElement.innerHTML = '<p>⚠️ Server loading slowly. Try another server if needed.</p>';
-                            }
-                        }, 10000);
-                        
-                        // Update status after delay
-                        setTimeout(() => {
-                            if (statusElement) {
-                                statusElement.innerHTML = '<p>✅ Server changed successfully</p>';
-                            }
-                        }, 3000);
-                        
-                        showToast('Server changed successfully', 'success');
-                    }, 500);
-                } else {
-                    showToast('Failed to load from this server', 'error');
-                }
-            } catch (error) {
-                console.error('Change server error:', error);
-                showToast('Failed to change server', 'error');
-            } finally {
-                showLoading(false);
-            }
-        }
-
-        // Refresh player function
-        function refreshPlayer() {
-            const iframe = document.getElementById('video-iframe');
-            const currentSrc = iframe.src;
-            
-            if (currentSrc) {
-                iframe.src = '';
-                setTimeout(() => {
-                    iframe.src = currentSrc;
-                    showToast('Player refreshed', 'success');
-                }, 500);
-            }
-        }
-
-        // Open video in new tab
-        function openInNewTab(videoUrl) {
-            if (videoUrl) {
-                window.open(videoUrl, '_blank');
-                showToast('Video opened in new tab', 'success');
-            }
-        }
-
-        // Prevent back navigation when video is playing
-        function showPlayer() {
-            hideAllSections();
-            document.getElementById('player-section').classList.add('active');
-            
-            // Prevent accidental back navigation
-            window.addEventListener('beforeunload', handleBeforeUnload);
-        }
-
-        function handleBeforeUnload(e) {
-            const iframe = document.getElementById('video-iframe');
-            if (iframe.src) {
-                e.preventDefault();
-                e.returnValue = '';
-                return '';
-            }
-        }
-
-        function backToDetails() {
-            // Remove beforeunload listener
-            window.removeEventListener('beforeunload', handleBeforeUnload);
-            
-            // Clear iframe
-            const iframe = document.getElementById('video-iframe');
-            iframe.src = '';
-            
-            // Clear any timeouts
-            if (window.iframeTimeout) {
-                clearTimeout(window.iframeTimeout);
-            }
-            
-            showDetails();
-        }
-
-        // Utility functions
-        function showLoading(show) {
-            const loading = document.getElementById('loading');
-            loading.style.display = show ? 'block' : 'none';
-        }
-
-        function showToast(message, type = 'info') {
-            const container = document.getElementById('toast-container');
-            const toast = document.createElement('div');
-            toast.className = 'toast';
-            toast.textContent = message;
-            
-            if (type === 'error') {
-                toast.style.borderLeftColor = '#ff6b6b';
-            } else if (type === 'success') {
-                toast.style.borderLeftColor = '#4ecdc4';
-            }
-            
-            container.appendChild(toast);
-            
-            setTimeout(() => {
-                toast.remove();
-            }, 3000);
-        }
-
-        // Event listeners
-        document.getElementById('search-input').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                performSearch();
-            }
-        });
-
-        document.getElementById('hero-search-input').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                searchFromHero();
-            }
-        });
-
-        // Initialize app
-        document.addEventListener('DOMContentLoaded', function() {
-            showHome();
-        });
-    </script>
+        <div class="endpoint">
+            <div class="endpoint-name">7. Sources</div>
+            <div class="endpoint-url">/movie/{movieId}/sources?serverId={serverId}</div>
+            <div class="endpoint-example">Example: /movie/90553/sources?serverId=9179590</div>
+        </div>
+    </div>
 </body>
 </html>
