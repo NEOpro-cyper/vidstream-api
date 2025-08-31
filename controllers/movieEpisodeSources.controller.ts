@@ -41,20 +41,25 @@ async function extractM3U8FromIframe(iframeUrl: string): Promise<{ m3u8Url: stri
 
         // Enhanced regex patterns for M3U8 extraction
         const m3u8Patterns = [
-            // Direct M3U8 URLs - more comprehensive
-            /["'`]([^"'`]*\.m3u8[^"'`]*?)["'`]/gi,
-            // Base64 encoded - various forms
-            /atob\s*\(\s*["'`]([^"'`]+)["'`]\s*\)/gi,
-            /btoa\s*\(\s*["'`]([^"'`]+)["'`]\s*\)/gi,
-            /window\.atob\s*\(\s*["'`]([^"'`]+)["'`]\s*\)/gi,
-            // URL in data attributes
-            /data-[^=]*=\s*["'`]([^"'`]*\.m3u8[^"'`]*?)["'`]/gi,
-            // JavaScript object properties
-            /(?:url|src|link|source|file|stream)\s*:\s*["'`]([^"'`]*\.m3u8[^"'`]*?)["'`]/gi,
-            // Function calls with M3U8
-            /(?:setSource|setSrc|loadVideo|playVideo)\s*\(\s*["'`]([^"'`]*\.m3u8[^"'`]*?)["'`]/gi,
-            // Encrypted or obfuscated patterns
-            /\w+\s*=\s*["'`]([^"'`]*(?:aHR0c|http)[^"'`]*\.m3u8[^"'`]*?)["'`]/gi,
+            // Direct complete M3U8 URLs with protocol
+            /["'`](https?:\/\/[^"'`]*\.m3u8[^"'`]*)["'`]/gi,
+            // M3U8 URLs starting with //
+            /["'`](\/\/[^"'`]*\.m3u8[^"'`]*)["'`]/gi,
+            // M3U8 URLs starting with /
+            /["'`](\/[^"'`]*\.m3u8[^"'`]*)["'`]/gi,
+            // JavaScript object properties - ensure we capture full URLs
+            /(?:url|src|link|source|file|stream|playlist)\s*:\s*["'`]((?:https?:\/\/|\/\/|\/)[^"'`]*\.m3u8[^"'`]*)["'`]/gi,
+            // Base64 encoded URLs
+            /atob\s*\(\s*["'`]([A-Za-z0-9+/=]{20,})["'`]\s*\)/gi,
+            /window\.atob\s*\(\s*["'`]([A-Za-z0-9+/=]{20,})["'`]\s*\)/gi,
+            // Data attributes with full URLs
+            /data-[^=]*=\s*["'`]((?:https?:\/\/|\/\/|\/)[^"'`]*\.m3u8[^"'`]*)["'`]/gi,
+            // Function calls with complete URLs
+            /(?:setSource|setSrc|loadVideo|playVideo)\s*\(\s*["'`]((?:https?:\/\/|\/\/|\/)[^"'`]*\.m3u8[^"'`]*)["'`]/gi,
+            // Variable assignments with URLs
+            /\w+\s*=\s*["'`]((?:https?:\/\/|\/\/|\/)[^"'`]*\.m3u8[^"'`]*)["'`]/gi,
+            // Common video streaming patterns
+            /["'`]((?:https?:\/\/)?[^"'`]*(?:stream|video|cdn|player|media)[^"'`]*\.m3u8[^"'`]*)["'`]/gi,
         ];
 
         let m3u8Url = null;
