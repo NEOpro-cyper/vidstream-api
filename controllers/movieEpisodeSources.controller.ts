@@ -3,6 +3,16 @@ import { EpisodeServerResponse } from "../types/controllers/movieEpisodeSources"
 import { USER_AGENT_HEADER, ACCEPT_ENCODING_HEADER, ACCEPT_HEADER } from "../config/axois";
 import axios from "axios";
 
+// Validation function to ensure we never return invalid URLs
+function validateM3U8Url(url: string): boolean {
+    if (!url || typeof url !== 'string') return false;
+    if (url === '.m3u8' || url === 'index.m3u8') return false;
+    if (url.length < 20) return false;
+    if (!url.startsWith('http')) return false;
+    if (!url.includes('.m3u8')) return false;
+    return true;
+}
+
 // Helper function to extract M3U8 URL from iframe
 async function extractM3U8FromIframe(iframeUrl: string): Promise<{ m3u8Url: string | null, debugInfo: any }> {
     const debugInfo = {
@@ -10,7 +20,9 @@ async function extractM3U8FromIframe(iframeUrl: string): Promise<{ m3u8Url: stri
         htmlContentLength: 0,
         foundPatterns: [],
         apiEndpoints: [],
-        errors: []
+        errors: [],
+        allMatches: [], // Track all potential matches
+        m3u8Contexts: []
     };
 
     try {
@@ -62,38 +74,51 @@ async function extractM3U8FromIframe(iframeUrl: string): Promise<{ m3u8Url: stri
             debugInfo.m3u8Contexts = m3u8Contexts;
         }
 
-        // Enhanced regex patterns for M3U8 extraction
+        // Enhanced regex patterns specifically for complex M3U8 URLs
         const m3u8Patterns = [
-            // Most specific first - complete HTTP URLs
-            /["'`](https?:\/\/[^"'`\s]{10,}\.m3u8[^"'`\s]*)["'`]/gi,
-            // Protocol-relative URLs
-            /["'`](\/\/[^"'`\s]{10,}\.m3u8[^"'`\s]*)["'`]/gi,
-            // Absolute paths
-            /["'`](\/[^"'`\s]{5,}\.m3u8[^"'`\s]*)["'`]/gi,
-            // JavaScript object properties with specific keys
-            /(?:url|src|link|source|file|stream|playlist|video)\s*:\s*["'`](https?:\/\/[^"'`\s]+\.m3u8[^"'`\s]*)["'`]/gi,
-            /(?:url|src|link|source|file|stream|playlist|video)\s*:\s*["'`](\/\/[^"'`\s]+\.m3u8[^"'`\s]*)["'`]/gi,
-            /(?:url|src|link|source|file|stream|playlist|video)\s*:\s*["'`](\/[^"'`\s]+\.m3u8[^"'`\s]*)["'`]/gi,
-            // Base64 patterns (only longer strings that could contain URLs)
-            /atob\s*\(\s*["'`]([A-Za-z0-9+\/=]{30,})["'`]\s*\)/gi,
-            /window\.atob\s*\(\s*["'`]([A-Za-z0-9+\/=]{30,})["'`]\s*\)/gi,
-            // Data attributes
-            /data-[\w-]+\s*=\s*["'`](https?:\/\/[^"'`\s]+\.m3u8[^"'`\s]*)["'`]/gi,
-            /data-[\w-]+\s*=\s*["'`](\/\/[^"'`\s]+\.m3u8[^"'`\s]*)["'`]/gi,
-            /data-[\w-]+\s*=\s*["'`](\/[^"'`\s]+\.m3u8[^"'`\s]*)["'`]/gi,
-            // Function calls
-            /(?:setSource|setSrc|loadVideo|playVideo|loadStream)\s*\(\s*["'`](https?:\/\/[^"'`\s]+\.m3u8[^"'`\s]*)["'`]/gi,
-            /(?:setSource|setSrc|loadVideo|playVideo|loadStream)\s*\(\s*["'`](\/\/[^"'`\s]+\.m3u8[^"'`\s]*)["'`]/gi,
-            /(?:setSource|setSrc|loadVideo|playVideo|loadStream)\s*\(\s*["'`](\/[^"'`\s]+\.m3u8[^"'`\s]*)["'`]/gi,
+            // Most comprehensive pattern for complex URLs with special characters (~ + = etc)
+            /["'`](https?:\/\/[^\s"'`<>{}|\\^[\]]+\.m3u8[^\s"'`<>{}|\\^[\]]*?)["'`]/gi,
+            
+            // Protocol-relative with complex characters
+            /["'`](\/\/[^\s"'`<>{}|\\^[\]]+\.m3u8[^\s"'`<>{}|\\^[\]]*?)["'`]/gi,
+            
+            // Absolute paths with complex characters
+            /["'`](\/[^\s"'`<>{}|\\^[\]]{10,}\.m3u8[^\s"'`<>{}|\\^[\]]*?)["'`]/gi,
+            
+            // JavaScript object properties - more flexible
+            /(?:url|src|link|source|file|stream|playlist|video|hls)\s*[:\=]\s*["'`](https?:\/\/[^\s"'`<>{}|\\^[\]]+\.m3u8[^\s"'`<>{}|\\^[\]]*?)["'`]/gi,
+            /(?:url|src|link|source|file|stream|playlist|video|hls)\s*[:\=]\s*["'`](\/\/[^\s"'`<>{}|\\^[\]]+\.m3u8[^\s"'`<>{}|\\^[\]]*?)["'`]/gi,
+            /(?:url|src|link|source|file|stream|playlist|video|hls)\s*[:\=]\s*["'`](\/[^\s"'`<>{}|\\^[\]]+\.m3u8[^\s"'`<>{}|\\^[\]]*?)["'`]/gi,
+            
+            // Base64 patterns with better validation
+            /(?:atob|window\.atob|Buffer\.from|decode)\s*\(\s*["'`]([A-Za-z0-9+\/=]{40,})["'`]\s*\)/gi,
+            
+            // Data attributes with flexible matching
+            /data-[a-zA-Z0-9\-_]+\s*=\s*["'`](https?:\/\/[^\s"'`<>{}|\\^[\]]+\.m3u8[^\s"'`<>{}|\\^[\]]*?)["'`]/gi,
+            /data-[a-zA-Z0-9\-_]+\s*=\s*["'`](\/\/[^\s"'`<>{}|\\^[\]]+\.m3u8[^\s"'`<>{}|\\^[\]]*?)["'`]/gi,
+            /data-[a-zA-Z0-9\-_]+\s*=\s*["'`](\/[^\s"'`<>{}|\\^[\]]+\.m3u8[^\s"'`<>{}|\\^[\]]*?)["'`]/gi,
+            
+            // Function calls with flexible matching
+            /(?:setSource|setSrc|loadVideo|playVideo|loadStream|play)\s*\(\s*["'`](https?:\/\/[^\s"'`<>{}|\\^[\]]+\.m3u8[^\s"'`<>{}|\\^[\]]*?)["'`]/gi,
+            /(?:setSource|setSrc|loadVideo|playVideo|loadStream|play)\s*\(\s*["'`](\/\/[^\s"'`<>{}|\\^[\]]+\.m3u8[^\s"'`<>{}|\\^[\]]*?)["'`]/gi,
+            /(?:setSource|setSrc|loadVideo|playVideo|loadStream|play)\s*\(\s*["'`](\/[^\s"'`<>{}|\\^[\]]+\.m3u8[^\s"'`<>{}|\\^[\]]*?)["'`]/gi,
+            
             // Variable assignments
-            /(?:var|let|const)\s+\w+\s*=\s*["'`](https?:\/\/[^"'`\s]+\.m3u8[^"'`\s]*)["'`]/gi,
-            /(?:var|let|const)\s+\w+\s*=\s*["'`](\/\/[^"'`\s]+\.m3u8[^"'`\s]*)["'`]/gi,
-            /(?:var|let|const)\s+\w+\s*=\s*["'`](\/[^"'`\s]+\.m3u8[^"'`\s]*)["'`]/gi,
-            // Generic patterns as last resort - but with minimum length requirements
-            /["'`]([^"'`\s]{15,}\.m3u8[^"'`\s]{0,50})["'`]/gi,
+            /(?:var|let|const|=)\s+[a-zA-Z_$][a-zA-Z0-9_$]*\s*=\s*["'`](https?:\/\/[^\s"'`<>{}|\\^[\]]+\.m3u8[^\s"'`<>{}|\\^[\]]*?)["'`]/gi,
+            /(?:var|let|const|=)\s+[a-zA-Z_$][a-zA-Z0-9_$]*\s*=\s*["'`](\/\/[^\s"'`<>{}|\\^[\]]+\.m3u8[^\s"'`<>{}|\\^[\]]*?)["'`]/gi,
+            /(?:var|let|const|=)\s+[a-zA-Z_$][a-zA-Z0-9_$]*\s*=\s*["'`](\/[^\s"'`<>{}|\\^[\]]+\.m3u8[^\s"'`<>{}|\\^[\]]*?)["'`]/gi,
+            
+            // Generic pattern with very flexible character matching (last resort)
+            /["'`]([^\s"'`<>{}|\\^[\]]{25,}\.m3u8[^\s"'`<>{}|\\^[\]]*?)["'`]/gi,
+            
+            // Fallback patterns for edge cases
+            /m3u8["'`\s]*[:\=]["'`\s]*["'`]([^\s"'`<>{}|\\^[\]]+)["'`]/gi,
+            /["'`]([^\s"'`<>{}|\\^[\]]*\.m3u8[^\s"'`<>{}|\\^[\]]{0,200})["'`]/gi
         ];
 
         let m3u8Url = null;
+        let bestMatch = null;
+        let bestScore = 0;
 
         // Try each pattern and collect debug info
         for (let i = 0; i < m3u8Patterns.length; i++) {
@@ -101,85 +126,135 @@ async function extractM3U8FromIframe(iframeUrl: string): Promise<{ m3u8Url: stri
             let match;
             const patternMatches = [];
             
+            // Reset regex lastIndex to avoid issues with global regex
+            pattern.lastIndex = 0;
+            
             while ((match = pattern.exec(htmlContent)) !== null) {
                 let potentialUrl = match[1];
                 patternMatches.push(potentialUrl);
                 
-                console.log(`Pattern ${i}: Found match "${potentialUrl}"`);
+                console.log(`Pattern ${i}: Found match "${potentialUrl.substring(0, 100)}${potentialUrl.length > 100 ? '...' : ''}"`);
                 
-                // Skip obviously invalid matches
-                if (potentialUrl === '.m3u8' || potentialUrl.length < 10) {
-                    console.log(`Skipping invalid match: "${potentialUrl}"`);
+                debugInfo.allMatches.push({
+                    patternIndex: i,
+                    match: potentialUrl.length > 200 ? potentialUrl.substring(0, 200) + '...' : potentialUrl,
+                    fullLength: potentialUrl.length
+                });
+                
+                // Enhanced validation - skip obviously invalid matches
+                if (!potentialUrl || potentialUrl === '.m3u8') {
+                    console.log(`❌ Invalid match: empty or just extension`);
                     continue;
                 }
                 
-                // Handle base64 decoding
-                if (pattern.source.includes('atob')) {
+                // Handle base64 decoding for base64 patterns
+                if (pattern.source.includes('atob') || pattern.source.includes('decode') || pattern.source.includes('Buffer')) {
                     try {
                         // Only decode if it looks like base64 and is long enough
                         if (potentialUrl.length > 30 && /^[A-Za-z0-9+\/=]+$/.test(potentialUrl)) {
                             const decoded = Buffer.from(potentialUrl, 'base64').toString('utf-8');
                             console.log('Base64 decoded:', decoded.substring(0, 200));
-                            if (decoded.includes('.m3u8') && (decoded.includes('http') || decoded.startsWith('//'))) {
-                                potentialUrl = decoded.match(/(https?:\/\/[^\s"'`]+\.m3u8[^\s"'`]*)/)?.[1] || 
-                                              decoded.match(/(\/\/[^\s"'`]+\.m3u8[^\s"'`]*)/)?.[1] || 
-                                              decoded.match(/(\/[^\s"'`]+\.m3u8[^\s"'`]*)/)?.[1];
-                                if (!potentialUrl) continue;
+                            
+                            // Look for M3U8 URLs in decoded content
+                            const urlMatch = decoded.match(/(https?:\/\/[^\s"'`<>{}|\\^[\]]+\.m3u8[^\s"'`<>{}|\\^[\]]*)/);
+                            if (urlMatch) {
+                                potentialUrl = urlMatch[1];
                             } else {
-                                continue;
+                                // Try other patterns in decoded content
+                                const altMatch = decoded.match(/(\/\/[^\s"'`<>{}|\\^[\]]+\.m3u8[^\s"'`<>{}|\\^[\]]*)/);
+                                if (altMatch) {
+                                    potentialUrl = 'https:' + altMatch[1];
+                                } else {
+                                    continue;
+                                }
                             }
                         } else {
                             continue;
                         }
                     } catch (e) {
-                        console.log('Base64 decode failed:', e.message);
+                        console.log('❌ Base64 decode failed:', e.message);
                         continue;
                     }
                 }
                 
-                // Only process URLs that contain .m3u8 and look valid
-                if (potentialUrl.includes('.m3u8') && potentialUrl.length > 10) {
-                    console.log('Processing potential M3U8 URL:', potentialUrl);
-                    
-                    // Normalize URL
-                    if (potentialUrl.startsWith('//')) {
-                        potentialUrl = 'https:' + potentialUrl;
-                    } else if (potentialUrl.startsWith('/') && !potentialUrl.startsWith('//')) {
-                        const urlObj = new URL(iframeUrl);
-                        potentialUrl = `${urlObj.protocol}//${urlObj.host}${potentialUrl}`;
-                    }
-                    
-                    // Final validation - must be a complete HTTP URL with .m3u8
-                    if (potentialUrl.startsWith('http') && potentialUrl.includes('.m3u8') && potentialUrl.length > 20) {
-                        m3u8Url = potentialUrl;
-                        debugInfo.foundPatterns.push({
-                            patternIndex: i,
-                            pattern: pattern.source.substring(0, 80) + '...',
-                            match: potentialUrl,
-                            originalMatch: match[1]
-                        });
-                        console.log('✅ Found valid M3U8 URL:', potentialUrl);
-                        break;
-                    } else {
-                        console.log('❌ URL failed final validation:', potentialUrl);
-                    }
-                } else {
-                    console.log('❌ Invalid M3U8 match (too short or no .m3u8):', potentialUrl);
+                // Score the match quality
+                let score = 0;
+                
+                // Must contain .m3u8
+                if (!potentialUrl.includes('.m3u8')) {
+                    console.log('❌ No .m3u8 in URL');
+                    continue;
                 }
+                
+                // Must be reasonable length
+                if (potentialUrl.length < 15) {
+                    console.log('❌ URL too short:', potentialUrl.length);
+                    continue;
+                }
+                
+                // Normalize URL
+                if (potentialUrl.startsWith('//')) {
+                    potentialUrl = 'https:' + potentialUrl;
+                } else if (potentialUrl.startsWith('/') && !potentialUrl.startsWith('//')) {
+                    const urlObj = new URL(iframeUrl);
+                    potentialUrl = `${urlObj.protocol}//${urlObj.host}${potentialUrl}`;
+                }
+                
+                // Must start with http/https after normalization
+                if (!potentialUrl.startsWith('http')) {
+                    console.log('❌ Not HTTP URL after normalization:', potentialUrl);
+                    continue;
+                }
+                
+                // Score based on URL characteristics
+                if (potentialUrl.startsWith('https://')) score += 10;
+                if (potentialUrl.length > 50) score += 5;
+                if (potentialUrl.length > 100) score += 5;
+                if (potentialUrl.includes('cdn') || potentialUrl.includes('stream') || potentialUrl.includes('video')) score += 5;
+                if (potentialUrl.endsWith('.m3u8')) score += 10;
+                if (potentialUrl.includes('1080') || potentialUrl.includes('720') || potentialUrl.includes('480')) score += 5;
+                if (potentialUrl.includes('index.m3u8')) score += 15; // Higher score for index files
+                
+                // Bonus points for complex URLs (likely to be real streaming URLs)
+                if (potentialUrl.length > 200) score += 10;
+                if ((potentialUrl.match(/[~+=]/g) || []).length > 5) score += 8;
+                
+                console.log(`✅ Valid M3U8 URL found (score: ${score}):`, potentialUrl.substring(0, 100) + '...');
+                
+                // Keep the best match
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestMatch = potentialUrl;
+                    debugInfo.foundPatterns.push({
+                        patternIndex: i,
+                        pattern: pattern.source.substring(0, 80) + '...',
+                        match: potentialUrl.length > 200 ? potentialUrl.substring(0, 200) + '...' : potentialUrl,
+                        score: score,
+                        fullLength: potentialUrl.length
+                    });
+                }
+                
+                // Don't break - continue looking for better matches
             }
             
             if (patternMatches.length > 0) {
                 debugInfo.foundPatterns.push({
                     patternIndex: i,
-                    matches: patternMatches
+                    matches: patternMatches.map(m => m.length > 100 ? m.substring(0, 100) + '...' : m)
                 });
             }
-            
-            if (m3u8Url) break;
+        }
+        
+        // Use the best match if it's valid
+        if (bestMatch && validateM3U8Url(bestMatch)) {
+            m3u8Url = bestMatch;
+            console.log('🎉 Selected best M3U8 URL (score:', bestScore, '):', m3u8Url.substring(0, 100) + '...');
         }
 
-        // Enhanced API endpoint discovery
+        // Enhanced API endpoint discovery (if no direct URL found)
         if (!m3u8Url) {
+            console.log('🔍 No direct M3U8 found, trying API endpoints...');
+            
             const apiPatterns = [
                 // Common API patterns for video streaming
                 /["'`]([^"'`]*\/(?:api|ajax|source|stream|player|embed)\/[^"'`]*?)["'`]/gi,
@@ -222,24 +297,39 @@ async function extractM3U8FromIframe(iframeUrl: string): Promise<{ m3u8Url: stri
                         const apiData = apiResponse.data;
                         console.log('API response:', typeof apiData === 'string' ? apiData.substring(0, 200) : JSON.stringify(apiData).substring(0, 200));
                         
-                        // Search in API response
+                        // Search in API response using enhanced patterns
                         const searchText = typeof apiData === 'string' ? apiData : JSON.stringify(apiData);
-                        const m3u8Match = searchText.match(/["'`]([^"'`]*\.m3u8[^"'`]*?)["'`]/);
                         
-                        if (m3u8Match) {
-                            let foundUrl = m3u8Match[1];
-                            if (foundUrl.startsWith('/')) {
-                                const urlObj = new URL(apiUrl);
-                                foundUrl = `${urlObj.protocol}//${urlObj.host}${foundUrl}`;
+                        // Try multiple patterns on API response
+                        for (const searchPattern of [
+                            /["'`]([^\s"'`<>{}|\\^[\]]+\.m3u8[^\s"'`<>{}|\\^[\]]*?)["'`]/g,
+                            /(https?:\/\/[^\s"'`<>{}|\\^[\]]+\.m3u8[^\s"'`<>{}|\\^[\]]*)/g,
+                            /(\/\/[^\s"'`<>{}|\\^[\]]+\.m3u8[^\s"'`<>{}|\\^[\]]*)/g
+                        ]) {
+                            const m3u8Match = searchText.match(searchPattern);
+                            if (m3u8Match) {
+                                let foundUrl = m3u8Match[1] || m3u8Match[0];
+                                
+                                if (foundUrl.startsWith('//')) {
+                                    foundUrl = 'https:' + foundUrl;
+                                } else if (foundUrl.startsWith('/')) {
+                                    const urlObj = new URL(apiUrl);
+                                    foundUrl = `${urlObj.protocol}//${urlObj.host}${foundUrl}`;
+                                }
+                                
+                                if (validateM3U8Url(foundUrl)) {
+                                    m3u8Url = foundUrl;
+                                    debugInfo.foundPatterns.push({
+                                        source: 'api',
+                                        apiUrl,
+                                        match: foundUrl
+                                    });
+                                    break;
+                                }
                             }
-                            m3u8Url = foundUrl;
-                            debugInfo.foundPatterns.push({
-                                source: 'api',
-                                apiUrl,
-                                match: foundUrl
-                            });
-                            break;
                         }
+                        
+                        if (m3u8Url) break;
                         
                     } catch (e) {
                         debugInfo.errors.push(`API call failed: ${apiUrl} - ${e.message}`);
@@ -250,7 +340,7 @@ async function extractM3U8FromIframe(iframeUrl: string): Promise<{ m3u8Url: stri
             }
         }
 
-        console.log('Final M3U8 URL:', m3u8Url);
+        console.log('Final M3U8 URL:', m3u8Url ? m3u8Url.substring(0, 100) + '...' : 'null');
         return { m3u8Url, debugInfo };
 
     } catch (error) {
@@ -296,16 +386,23 @@ export default async function (req: any, res: Response) {
             // Extract M3U8 URL from iframe
             const extractionResult = await extractM3U8FromIframe(responseData.link);
             
-            if (extractionResult.m3u8Url) {
+            // CRITICAL: Validate the extracted URL before setting it
+            if (extractionResult.m3u8Url && validateM3U8Url(extractionResult.m3u8Url)) {
                 responseData.m3u8 = extractionResult.m3u8Url;
                 responseData.streamUrl = extractionResult.m3u8Url;
                 responseData.extractionSuccess = true;
-                console.log('Successfully extracted M3U8:', extractionResult.m3u8Url);
+                console.log('✅ Successfully extracted valid M3U8:', extractionResult.m3u8Url.substring(0, 100) + '...');
             } else {
-                console.log('Could not extract M3U8 URL from iframe');
+                console.log('❌ Could not extract valid M3U8 URL from iframe');
                 responseData.m3u8 = null;
+                responseData.streamUrl = null;
                 responseData.extractionSuccess = false;
-                responseData.note = 'M3U8 URL could not be extracted from iframe';
+                responseData.note = 'Valid M3U8 URL could not be extracted from iframe';
+                
+                // Log what we found for debugging
+                if (extractionResult.m3u8Url) {
+                    console.log('❌ Invalid M3U8 URL rejected:', extractionResult.m3u8Url);
+                }
             }
             
             // Add debug information in development/debug mode
