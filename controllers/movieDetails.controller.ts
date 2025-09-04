@@ -11,7 +11,8 @@ export default async function (req: Request, res: Response) {
         title: "",
         description: "",
         type: "",
-        poster: "", // Add poster field
+        episodeId: "", // Moved below type
+        poster: "",
         stats: [],
         related: [],
     };
@@ -29,30 +30,86 @@ export default async function (req: Request, res: Response) {
     
     const $: CheerioAPI = load(axiosResponse.data);
     
-    response.title = $(".movie-detail h3.movie-name").text();
-    response.description = $(".movie-detail .is-description .dropdown-menu .dropdown-text").text().trim();
+    response.title = $(".heading-name a").text().trim() || $("h2.heading-name").text().trim();
+    response.description = $(".description").text().trim();
     
-    // Extract poster URL
-    response.poster = $(".m_i-d-poster .film-poster .film-poster-img").attr("src") || "";
+    // Extract poster URL - try multiple selectors
+    response.poster = $(".m_i-d-poster .film-poster .film-poster-img").attr("src") || 
+                     $(".film-poster .film-poster-img").attr("src") || 
+                     $(".poster img").attr("src") || "";
     
-    $(".movie-detail .is-sub > div").each((_, el) => {
-        const stat: any = {
-            name: $(el).find(".name").text(),
-            value: []
-        };
-        const anchorTags = $(el).find(".value a");
-        if (anchorTags.length) {
-            anchorTags.each((_, anchor) => {
-                stat.value.push($(anchor).text());
-            });
-        } else {
-            stat.value = $(el).find(".value").text().trim();
+    // Extract stats from the elements section
+    $(".elements .row-line").each((_, el) => {
+        const typeText = $(el).find(".type").text().trim();
+        if (typeText) {
+            const stat: any = {
+                name: typeText,
+                value: []
+            };
+            
+            const anchorTags = $(el).find("a");
+            if (anchorTags.length) {
+                anchorTags.each((_, anchor) => {
+                    const text = $(anchor).text().trim();
+                    if (text) stat.value.push(text);
+                });
+            } else {
+                const valueText = $(el).clone().children(".type").remove().end().text().trim();
+                if (valueText) stat.value = valueText;
+            }
+            
+            if (stat.value.length > 0 || stat.value) {
+                response.stats.push(stat);
+            }
         }
-        response.stats.push(stat);
     });
     
-    $(".section-related .item").each((_, el) => {
-        response.related.push(extractDetect($, el));
+    // Extract related movies from the "You May Also Like" section
+    $(".film-related .flw-item").each((_, el) => {
+        const relatedItem = {
+            id: "",
+            title: "",
+            poster: "",
+            link: "",
+            stats: {
+                year: "",
+                duration: "", 
+                type: ""
+            }
+        };
+        
+        // Extract title and link
+        const titleLink = $(el).find(".film-name a").first();
+        relatedItem.title = titleLink.text().trim();
+        relatedItem.link = titleLink.attr("href") || "";
+        
+        // Extract ID from link (e.g., /movie/watch-superman-127954 -> 127954)
+        const linkMatch = relatedItem.link.match(/watch-[\w-]+-(\d+)$/);
+        if (linkMatch) {
+            relatedItem.id = linkMatch[1];
+        }
+        
+        // Extract poster
+        relatedItem.poster = $(el).find(".film-poster-img").attr("src") || 
+                            $(el).find(".film-poster-img").attr("data-src") || "";
+        
+        // Extract year, duration, and type from fd-infor
+        const infoItems = $(el).find(".fd-infor .fdi-item");
+        infoItems.each((idx, infoEl) => {
+            const text = $(infoEl).text().trim();
+            if (/^\d{4}$/.test(text)) {
+                relatedItem.stats.year = text;
+            } else if (text.includes("m")) {
+                relatedItem.stats.duration = text;
+            }
+        });
+        
+        // Extract type from float-right
+        relatedItem.stats.type = $(el).find(".fd-infor .fdi-type").text().trim() || "Movie";
+        
+        if (relatedItem.title) {
+            response.related.push(relatedItem);
+        }
     });
     
     const axiosResponseLines = axiosResponse.data.split("\n");
