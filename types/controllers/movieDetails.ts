@@ -4,7 +4,8 @@ export interface MovieDetailsResponse {
     title: string;
     description: string;
     type: string;
-    stats: {name: string, value: string | string[]}[];
-    related: (MovieItem | TvSeriesItem)[];
+    poster: string; // Add this line
     episodeId?: string;
+    stats: {name: string, value: string | string[]}[];
+    related: (MovieItem | TvSeriesItem)[];    
 }
