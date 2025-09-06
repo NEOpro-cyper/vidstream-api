@@ -1,4 +1,5 @@
-import { HomePageResponse, SpotlightItem, MovieItem, TvSeriesItem } from "../types/controllers/homePage"; // Assuming types are defined here
+import { HomePageResponse, SpotlightItem } from "../types/controllers/homePage";
+import { MovieItem, TvSeriesItem } from "../types/common";
 import { Request, Response } from "express";
 import { SRC_HOME_URL, USER_AGENT_HEADER, ACCEPT_ENCODING_HEADER, ACCEPT_HEADER } from "../config/axois";
 import axios from "axios";
@@ -38,7 +39,7 @@ export default async function (req: Request, res: Response) {
             const bannerStyle = $(el).attr("style") || "";
             const bannerMatch = bannerStyle.match(/url\(['"]?(.*?)['"]?\)/);
             const banner = bannerMatch ? bannerMatch[1] : "";
-
+            
             response.spotlight.push({
                 id,
                 title: $(el).find("h3.film-title a").text().trim(),
@@ -48,36 +49,49 @@ export default async function (req: Request, res: Response) {
             } as SpotlightItem);
         });
 
-        // --- Corrected Section Scraping (Trending, Latest, etc.) ---
-        $("section.block_area_home").each((_, section) => {
-            const sectionTitle = $(section).find("h2.cat-heading").text().trim();
-
+        // --- Corrected Section Scraping (Trending, Latest, etc.) with TMDB Integration ---
+        const sections = $("section.block_area_home");
+        
+        for (let i = 0; i < sections.length; i++) {
+            const section = sections.eq(i);
+            const sectionTitle = section.find("h2.cat-heading").text().trim();
+            
             if (sectionTitle === "Trending") {
-                // Scrape Trending Movies
-                $(section).find("#trending-movies .flw-item").each((_, el) => {
-                    response.trending.movies.push(extractMovie($, el));
-                });
-                // Scrape Trending TV Shows
-                $(section).find("#trending-tv .flw-item").each((_, el) => {
-                    response.trending.tvSeries.push(extractTvSeries($, el));
-                });
+                // Scrape Trending Movies with TMDB IDs
+                const movieElements = section.find("#trending-movies .flw-item").toArray();
+                for (const el of movieElements) {
+                    const movieItem = await extractMovie($, el);
+                    response.trending.movies.push(movieItem);
+                }
+                
+                // Scrape Trending TV Shows with TMDB IDs
+                const tvElements = section.find("#trending-tv .flw-item").toArray();
+                for (const el of tvElements) {
+                    const tvItem = await extractTvSeries($, el);
+                    response.trending.tvSeries.push(tvItem);
+                }
             } else if (sectionTitle === "Latest Movies") {
-                $(section).find(".flw-item").each((_, el) => {
-                    response.latestMovies.push(extractMovie($, el));
-                });
+                const elements = section.find(".flw-item").toArray();
+                for (const el of elements) {
+                    const movieItem = await extractMovie($, el);
+                    response.latestMovies.push(movieItem);
+                }
             } else if (sectionTitle === "Latest TV Shows") {
-                $(section).find(".flw-item").each((_, el) => {
-                    response.latestTvSeries.push(extractTvSeries($, el));
-                });
+                const elements = section.find(".flw-item").toArray();
+                for (const el of elements) {
+                    const tvItem = await extractTvSeries($, el);
+                    response.latestTvSeries.push(tvItem);
+                }
             } else if (sectionTitle === "Coming Soon") {
-                 $(section).find(".flw-item").each((_, el) => {
-                    response.comingSoon.push(extractDetect($, el));
-                });
+                const elements = section.find(".flw-item").toArray();
+                for (const el of elements) {
+                    const item = await extractDetect($, el);
+                    response.comingSoon.push(item);
+                }
             }
-        });
+        }
 
         res.status(200).json(response);
-
     } catch(err) {
         console.error("Error scraping home page:", err);
         res.status(500).json({ error: "Failed to scrape data from the source." });
