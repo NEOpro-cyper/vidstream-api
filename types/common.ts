@@ -2,6 +2,7 @@ export interface MovieItem {
     id: string;
     title: string;
     poster: string;
+    tmdbId?: number; // Added TMDB ID
     stats: MovieItemStats;
 }
 
@@ -15,10 +16,12 @@ export interface TvSeriesItem {
     id: string;
     title: string;
     poster: string;
+    tmdbId?: number; // Added TMDB ID
     stats: TvSeriesItemStats;
 }
 
 interface TvSeriesItemStats {
     seasons: string;
+    episodes: string; // Fixed: This was missing in your original code
     rating: string;
 }
